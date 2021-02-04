@@ -40,24 +40,33 @@ pd.read_sql_query('SELECT row_id, spec_itemid, dilution_value, org_name FROM MIC
 
 # pull together subject date of birth (from the patients table) with insurance and marital statuses (from admissions table)
 # only including subjects who are either single or widowed
-pd.read_sql_query('''SELECT patients.subject_id, marital_status, dob, insurance 
-FROM patients INNER JOIN admissions 
-ON patients.subject_id = admissions.subject_id 
+pd.read_sql_query('''SELECT PATIENTS.subject_id, marital_status, dob, insurance 
+FROM PATIENTS INNER JOIN admissions 
+ON PATIENTS.subject_id = admissions.subject_id 
 WHERE marital_status = "WIDOWED" OR marital_status = "SINGLE";''', conn)
 
-# perform a left join to link proceedure names in the proceedure_icds to the icd codes present
-# in the proceedure_events table, and present these proceedure names with specific admission instances.
-pd.read_sql_query('''SELECT admissions.subject_id, discharge_location, proceedure_icd.short_title 
+# perform a left join to link procedure names in the procedure_icds to the icd codes present
+# in the procedure_events table, and present these procedure names with specific admission instances.
+pd.read_sql_query('''SELECT admissions.subject_id, discharge_location, D_ICD_PROCEDURES.short_title 
 FROM admissions 
-LEFT JOIN proceedure_events ON admissions.subject_id = proceedure_events.subject_id
-LEFT JOIN proceedure_icd ON proceedure_events.icd9_code = proceedure_icd.icd9_code;''', conn)
+LEFT JOIN PROCEDUREEVENTS_MV ON admissions.subject_id = PROCEDUREEVENTS_MV.subject_id
+LEFT JOIN D_ICD_PROCEDURES ON PROCEDUREEVENTS_MV.icd9_code = D_ICD_PROCEDURES.icd9_code;''', conn)
 
-# pull the proceedures that have occured more than 10 times and show the number of occurances for each event
-pd.read_sql_query('''SELECT proceedure_icd.short_title, proceedure_events.icd9_code, COUNT(proceedure_events.icd9_code) 
-FROM proceedure_events
-LEFT JOIN proceedure_icd on proceedure_events.icd9_code = proceedure_icd.icd9_code
-GROUP BY proceedure_events.icd9_code
-HAVING COUNT(proceedure_events.icd9_code) > 10;''', conn)
+# pull the procedures that have occured more than 10 times and show the number of occurances for each event
+pd.read_sql_query('''SELECT D_ICD_PROCEDURES.short_title, PROCEDUREEVENTS_MV.icd9_code, COUNT(PROCEDUREEVENTS_MV.icd9_code) 
+FROM PROCEDUREEVENTS_MV
+LEFT JOIN D_ICD_PROCEDURES on PROCEDUREEVENTS_MV.icd9_code = procedure.icd9_code
+GROUP BY PROCEDUREEVENTS_MV.icd9_code
+HAVING COUNT(PROCEDUREEVENTS_MV.icd9_code) > 10;''', conn)
+
+# how does the distribution of admit times differ for emergency vs non emergency admissions?
+
+# 1) seperate emergency from non emergency admit types
+emergencies = pd.read_sql_query('SELECT admission_type, admittime FROM admissions WHERE admission_type = "EMERGENCY";', conn)
+non_emergencies = pd.read_sql_query('SELECT admission_type, admittime FROM admissions WHERE admission_type != "EMERGENCY";', conn)
+
+print(emergencies)
+print(non_emergencies)
 
 print('*****done!*****')
 
